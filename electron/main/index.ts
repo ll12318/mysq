@@ -46,6 +46,11 @@ async function createWindow() {
   win = new BrowserWindow({
     title: 'Main window',
     icon: path.join(process.env.VITE_PUBLIC, 'favicon.ico'),
+    width: 40,
+    height: 40,
+    // 右下角显示
+    x: 0,
+    y: 0,
     webPreferences: {
       preload,
       // Warning: Enable nodeIntegration and disable contextIsolation is not secure in production
@@ -55,12 +60,16 @@ async function createWindow() {
       // Read more on https://www.electronjs.org/docs/latest/tutorial/context-isolation
       // contextIsolation: false,
     },
+    alwaysOnTop: true, // 设置为悬浮窗
+    frame: false, // 如果你不需要窗口的边框和标题栏
+    transparent: true, // 如果你需要窗口透明
+    skipTaskbar: false, // 不在任务栏显示窗口
   })
 
   if (VITE_DEV_SERVER_URL) { // #298
     win.loadURL(VITE_DEV_SERVER_URL)
     // Open devTool if the app is not packaged
-    win.webContents.openDevTools()
+    // win.webContents.openDevTools()
   } else {
     win.loadFile(indexHtml)
   }
