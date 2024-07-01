@@ -55,9 +55,13 @@ const state = reactive({
 /**初始化模型加载 */
 async function fnLoadModel() {
   try {
+    const BASE_DIR =  await ipcRenderer.invoke('get-path')
+    console.log(BASE_DIR, 'BASE_DIR')
+    const modelsPath = `${BASE_DIR}/models`;
     // 模型文件访问路径
-  const modelsPath = `http://192.168.100.206/models`;
-
+  // const modelsPath = `http://192.168.100.206/models`;
+  // const modelsPath = `D:\\web\\web\\vue3_electron\\electron-vite-vue\\release\\28.1.0\\win-unpacked\\resources\\public\\models`;
+  //   const  modelsPath = `/models`;
   // 面部轮廓模型
   await faceapi.nets.faceLandmark68Net.load(modelsPath);
   // 面部表情模型
