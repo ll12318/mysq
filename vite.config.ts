@@ -70,6 +70,5 @@ export default defineConfig(({ command }) => {
       }
     })(),
     clearScreen: false,
-    base: '',
   }
 })

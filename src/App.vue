@@ -54,8 +54,10 @@ const state = reactive({
 
 /**初始化模型加载 */
 async function fnLoadModel() {
-  // 模型文件访问路径
-  const modelsPath = `/models`;
+  try {
+    // 模型文件访问路径
+  const modelsPath = `http://192.168.100.206/models`;
+
   // 面部轮廓模型
   await faceapi.nets.faceLandmark68Net.load(modelsPath);
   // 面部表情模型
@@ -90,6 +92,9 @@ async function fnLoadModel() {
 
   // 关闭模型加载
   state.netsLoadModel = false;
+  } catch (error) {
+    alert(JSON.stringify(error))
+  }
 }
 const faceCount = ref(0);
 /**根据模型参数识别绘制 */
@@ -223,6 +228,13 @@ watch(
 onMounted(() => {
   fnLoadModel();
 });
+setTimeout(() => {
+  fnOpen();
+}, 1000);
+ // 每隔5分钟刷新一次页面
+ setInterval(() => {
+  location.reload();
+}, 300000);
 
 onUnmounted(() => {
   fnClose();
@@ -234,7 +246,7 @@ onUnmounted(() => {
    
   </span>
   <div  v-show="show">
-    <span v-if="faceCount > 0" class="hong"></span>
+    <span v-if="faceCount > 1" class="hong"></span>
     <span v-else class="lu"></span>
   </div>
   <div class="page" >
