@@ -1,6 +1,6 @@
 <script setup>
 import * as faceapi from "@vladmandic/face-api";
-import { onMounted, onUnmounted, reactive, ref, watch } from "vue";
+import {onMounted, onUnmounted, reactive, ref, watch} from "vue";
 
 /**属性状态 */
 const state = reactive({
@@ -55,131 +55,136 @@ const state = reactive({
 /**初始化模型加载 */
 async function fnLoadModel() {
   try {
-    const BASE_DIR =  await ipcRenderer.invoke('get-path')
-    console.log(BASE_DIR, 'BASE_DIR')
+    const BASE_DIR = await ipcRenderer.invoke('get-path')
+    console.log(BASE_DIR,  'BASE_DIR')
     const modelsPath = `${BASE_DIR}/models`;
+    // const modelsPath = `/models`;
+
     // 模型文件访问路径
-  // const modelsPath = `http://192.168.100.206/models`;
-  // const modelsPath = `D:\\web\\web\\vue3_electron\\electron-vite-vue\\release\\28.1.0\\win-unpacked\\resources\\public\\models`;
-  //   const  modelsPath = `/models`;
-  // 面部轮廓模型
-  await faceapi.nets.faceLandmark68Net.load(modelsPath);
-  // 面部表情模型
-  await faceapi.nets.faceExpressionNet.load(modelsPath);
-  // 年龄性别模型
-  await faceapi.nets.ageGenderNet.load(modelsPath);
+    // const modelsPath = `http://192.168.100.206/models`;
+    // const modelsPath = `D:\\web\\web\\vue3_electron\\electron-vite-vue\\release\\28.1.0\\win-unpacked\\resources\\public\\models`;
+    // 面部轮廓模型
+    await faceapi.nets.faceLandmark68Net.load(modelsPath);
+    // 面部表情模型
+    await faceapi.nets.faceExpressionNet.load(modelsPath);
+    // 年龄性别模型
+    await faceapi.nets.ageGenderNet.load(modelsPath);
 
-  // 模型参数-ssdMobilenetv1
-  await faceapi.nets.ssdMobilenetv1.load(modelsPath);
-  state.netsOptions.ssdMobilenetv1 = new faceapi.SsdMobilenetv1Options({
-    minConfidence: 0.5, // 0 ~ 1
-    maxResults: 50, // 0 ~ 100
-  });
-  // 模型参数-tinyFaceDetector
-  await faceapi.nets.tinyFaceDetector.load(modelsPath);
-  state.netsOptions.tinyFaceDetector = new faceapi.TinyFaceDetectorOptions({
-    inputSize: 416, // 160 224 320 416 512 608
-    scoreThreshold: 0.5, // 0 ~ 1
-  });
+    // 模型参数-ssdMobilenetv1
+    await faceapi.nets.ssdMobilenetv1.load(modelsPath);
+    state.netsOptions.ssdMobilenetv1 = new faceapi.SsdMobilenetv1Options({
+      minConfidence: 0.5, // 0 ~ 1
+      maxResults: 50, // 0 ~ 100
+    });
+    // 模型参数-tinyFaceDetector
+    await faceapi.nets.tinyFaceDetector.load(modelsPath);
+    state.netsOptions.tinyFaceDetector = new faceapi.TinyFaceDetectorOptions({
+      inputSize: 416, // 160 224 320 416 512 608
+      scoreThreshold: 0.5, // 0 ~ 1
+    });
 
-  // 输出库版本
-  console.log(
-    `FaceAPI Version: ${faceapi?.version || "(not loaded)"
-    } \nTensorFlow/JS Version: ${faceapi.tf?.version_core || "(not loaded)"
-    } \nBackend: ${faceapi.tf?.getBackend() || "(not loaded)"
-    } \nModels loaded: ${faceapi.tf.engine().state.numTensors} tensors`
-  );
+    // 输出库版本
+    console.log(
+        `FaceAPI Version: ${faceapi?.version || "(not loaded)"
+        } \nTensorFlow/JS Version: ${faceapi.tf?.version_core || "(not loaded)"
+        } \nBackend: ${faceapi.tf?.getBackend() || "(not loaded)"
+        } \nModels loaded: ${faceapi.tf.engine().state.numTensors} tensors`
+    );
 
-  // 节点元素
-  state.videoEl = document.getElementById("page_draw-video");
-  state.canvasEl = document.getElementById("page_draw-video-canvas");
+    // 节点元素
+    state.videoEl = document.getElementById("page_draw-video");
+    state.canvasEl = document.getElementById("page_draw-video-canvas");
 
-  // 关闭模型加载
-  state.netsLoadModel = false;
+    // 关闭模型加载
+    state.netsLoadModel = false;
   } catch (error) {
     alert(JSON.stringify(error))
   }
 }
+
 const faceCount = ref(0);
+
 /**根据模型参数识别绘制 */
 async function fnRedraw() {
   try {
-  if (!state.videoEl || !state.canvasEl) return;
-  console.log("Run Redraw");
+    if (!state.videoEl || !state.canvasEl) return;
+    console.log("Run Redraw");
 
-  // 暂停视频时清除定时
-  if (state.videoEl.paused) {
-    clearTimeout(state.timer);
-    state.timer = 0;
-    return;
-  }
-  // 识别绘制人脸信息
-  const detect = await faceapi[state.detectFace](
-    state.videoEl,
-    state.netsOptions[state.netsType]
-  )
-    // 需引入面部轮廓模型
-    .withFaceLandmarks()
-    // 需引入面部表情模型
-    .withFaceExpressions()
-    // 需引入年龄性别模型
-    .withAgeAndGender();
-  faceCount.value = detect.length;
-  document.title = `Face Count: ${detect.length}`;
-  // 无识别数据时，清除定时重新再次识别
-  if (!detect) {
-    clearTimeout(state.timer);
-    state.timer = 0;
-    fnRedraw();
-    return;
-  }
-
-  // 匹配元素大小
-  const dims = faceapi.matchDimensions(state.canvasEl, state.videoEl, true);
-  const result = faceapi.resizeResults(detect, dims);
-
-  // 面框分值
-  if (state.draws.includes("box")) {
-    faceapi.draw.drawDetections(state.canvasEl, result);
-  }
-  // 面部轮廓
-  if (state.draws.includes("landmark")) {
-    // 需引入面部轮廓模型
-    faceapi.draw.drawFaceLandmarks(state.canvasEl, result);
-  }
-  // 面部表情
-  if (state.draws.includes("expression")) {
-    // 需引入面部表情模型
-    faceapi.draw.drawFaceExpressions(state.canvasEl, result, 0.05);
-  }
-  // 年龄性别
-  if (state.draws.includes("ageGender")) {
-    // 需引入年龄性别模型模型
-    const drawItem = (item) => {
-      const { age, gender, genderProbability } = item;
-      new faceapi.draw.DrawTextField(
-        [
-          `${Math.round(age)} Age`,
-          `${gender} (${Math.round(genderProbability)})`,
-        ],
-        item.detection.box.topRight
-      ).draw(state.canvasEl);
-    };
-    // 多结果
-    if (Array.isArray(result)) {
-      result.forEach((item) => drawItem(item));
-    } else {
-      drawItem(result);
+    // 暂停视频时清除定时
+    if (state.videoEl.paused) {
+      clearTimeout(state.timer);
+      state.timer = 0;
+      return;
     }
-  }
+    // 识别绘制人脸信息
+    const detect = await faceapi[state.detectFace](
+        state.videoEl,
+        state.netsOptions[state.netsType]
+    )
+        // 需引入面部轮廓模型
+        .withFaceLandmarks()
+        // 需引入面部表情模型
+        .withFaceExpressions()
+        // 需引入年龄性别模型
+        .withAgeAndGender();
+    faceCount.value = detect.length;
+    document.title = `Face Count: ${detect.length}`;
+    // 无识别数据时，清除定时重新再次识别
+    if (!detect) {
+      clearTimeout(state.timer);
+      state.timer = 0;
+      fnRedraw();
+      return;
+    }
 
-  // 定时器句柄
-  state.timer = setTimeout(() => fnRedraw(), 0);
+    // 匹配元素大小
+    const dims = faceapi.matchDimensions(state.canvasEl, state.videoEl, true);
+    const result = faceapi.resizeResults(detect, dims);
+
+    // 面框分值
+    if (state.draws.includes("box")) {
+      faceapi.draw.drawDetections(state.canvasEl, result);
+    }
+    // 面部轮廓
+    if (state.draws.includes("landmark")) {
+      // 需引入面部轮廓模型
+      faceapi.draw.drawFaceLandmarks(state.canvasEl, result);
+    }
+    // 面部表情
+    if (state.draws.includes("expression")) {
+      // 需引入面部表情模型
+      faceapi.draw.drawFaceExpressions(state.canvasEl, result, 0.05);
+    }
+    // 年龄性别
+    if (state.draws.includes("ageGender")) {
+      // 需引入年龄性别模型模型
+      const drawItem = (item) => {
+        const {age, gender, genderProbability} = item;
+        new faceapi.draw.DrawTextField(
+            [
+              `${Math.round(age)} Age`,
+              `${gender} (${Math.round(genderProbability)})`,
+            ],
+            item.detection.box.topRight
+        ).draw(state.canvasEl);
+      };
+      // 多结果
+      if (Array.isArray(result)) {
+        result.forEach((item) => drawItem(item));
+      } else {
+        drawItem(result);
+      }
+    }
+
+    // 定时器句柄
+    state.timer = setTimeout(() => fnRedraw(), 0);
   } catch (error) {
     console.log(error);
   }
 }
+
 const show = ref(false);
+
 /**启动摄像头视频媒体 */
 async function fnOpen() {
   if (state.stream !== null) return;
@@ -211,22 +216,22 @@ function fnClose() {
   setTimeout(() => {
     // 清空画布
     state.canvasEl
-      .getContext("2d")
-      .clearRect(0, 0, state.canvasEl.width, state.canvasEl.height);
+        .getContext("2d")
+        .clearRect(0, 0, state.canvasEl.width, state.canvasEl.height);
   }, 500);
 }
 
 // 摄像头前后切换 启用时，关闭后重开
 watch(
-  () => state.constraints.video.facingMode,
-  () => {
-    if (state.stream !== null) {
-      fnClose();
-      fnOpen();
-    } else {
-      fnClose();
+    () => state.constraints.video.facingMode,
+    () => {
+      if (state.stream !== null) {
+        fnClose();
+        fnOpen();
+      } else {
+        fnClose();
+      }
     }
-  }
 );
 
 onMounted(() => {
@@ -235,8 +240,8 @@ onMounted(() => {
 setTimeout(() => {
   fnOpen();
 }, 1000);
- // 每隔5分钟刷新一次页面
- setInterval(() => {
+// 每隔5分钟刷新一次页面
+setInterval(() => {
   location.reload();
 }, 300000);
 
@@ -246,19 +251,20 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <span @click="fnOpen()"  class="hui" v-show="!show">
+  <span v-show="!show" class="hui" @click="fnOpen()">
    
   </span>
-  <div  v-show="show">
-    <span v-if="faceCount > 1" class="hong"></span>
-    <span v-else class="lu"></span>
+  <div v-show="show">
+    <span v-if="faceCount > 1" class="hong"
+          style="display: flex;justify-content: center;align-items: center">{{ faceCount }}</span>
+    <span v-else class="lu" style="display: flex;justify-content: center;align-items: center">{{ faceCount }}</span>
   </div>
-  <div class="page" >
+  <div class="page">
     <div class="page_option">
       <div>
         <label>检测到人脸：{{ faceCount }}</label>
         <label>摄像头视频媒体：</label>
-       
+
         &nbsp;
         <button @click="fnClose()">结束</button>
       </div>
@@ -271,19 +277,19 @@ onUnmounted(() => {
       </div>
       <div>
         <label>面框分值：</label>
-        <input type="checkbox" value="box" v-model="state.draws" />
+        <input v-model="state.draws" type="checkbox" value="box"/>
       </div>
       <div>
         <label>面部轮廓：</label>
-        <input type="checkbox" value="landmark" v-model="state.draws" />
+        <input v-model="state.draws" type="checkbox" value="landmark"/>
       </div>
       <div>
         <label>面部表情：</label>
-        <input type="checkbox" value="expression" v-model="state.draws" />
+        <input v-model="state.draws" type="checkbox" value="expression"/>
       </div>
       <div>
         <label>年龄性别：</label>
-        <input type="checkbox" value="ageGender" v-model="state.draws" />
+        <input v-model="state.draws" type="checkbox" value="ageGender"/>
       </div>
       <div>
         <label>算法模型：</label>
@@ -301,29 +307,36 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div class="page_load" v-show="state.netsLoadModel">Load Model...</div>
-    <div class="page_draw" v-show="!state.netsLoadModel">
-      <div class="page_draw" v-show="!state.netsLoadModel">
-        <video id="page_draw-video" poster="/images/720x480.png" src="/videos/test.mp4" muted playsinline></video>
+    <div v-show="state.netsLoadModel" class="page_load">Load Model...</div>
+    <div v-show="!state.netsLoadModel" class="page_draw">
+      <div v-show="!state.netsLoadModel" class="page_draw">
+        <video id="page_draw-video" muted playsinline poster="/images/720x480.png" src="/videos/test.mp4"></video>
         <canvas id="page_draw-video-canvas"></canvas>
       </div>
     </div>
   </div>
 </template>
 
-<style >
+<style>
+body {
+  -webkit-app-region: drag;
+}
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
+
 body {
   margin: 0
 }
-.page{
+
+.page {
   display: none
 }
-.page_draw{
+
+.page_draw {
   position: relative;
   display: flex;
   justify-content: center;
@@ -331,37 +344,41 @@ body {
   width: 100%;
   height: 100%;
 }
-.page_draw video{
+
+.page_draw video {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.page_draw canvas{
+
+.page_draw canvas {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
 }
+
 .hong {
   display: inline-block;
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
   background-color: red;
   opacity: 0.9;
 }
+
 .lu {
   display: inline-block;
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
   background-color: green;
   opacity: 0.9;
 }
 
 .hui {
   display: inline-block;
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
   background-color: gray;
   opacity: 0.9;
 }
